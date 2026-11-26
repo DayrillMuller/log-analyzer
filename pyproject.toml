@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "log-file-analyzer"
+version = "1.0.0"
+description = "Streaming multi-format log parser, signature & sliding-window threat detector, and security reporter."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [
+  { name = "Log File Analyzer Maintainers" }
+]
+keywords = ["security", "logs", "siem", "cli", "anomaly-detection", "threat-detection"]
+dependencies = [
+  "PyYAML>=6.0",
+  "rich>=13.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+]
+
+[project.scripts]
+log-analyzer = "log_analyzer.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["log_analyzer*"]
+
+[tool.setuptools.package-data]
+log_analyzer = ["rules.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

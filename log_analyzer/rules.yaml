@@ -1,0 +1,221 @@
+# Externalized detection signatures, allowlists, deduplication, and behavioral thresholds.
+# Severities: LOW, MEDIUM, HIGH, CRITICAL
+
+# ---------------------------------------------------------------------------
+# Allowlist (Noise Reduction)
+# Events matching any trusted IP/CIDR, exact safe path, or benign User-Agent
+# are excluded from alerting and tracked under allowlisted_lines.
+# ---------------------------------------------------------------------------
+allowlist:
+  ips_and_cidrs:
+    - "127.0.0.1/32"
+    - "::1/128"
+    - "192.168.10.40/32"  # Internal Kubernetes/load-balancer health probe
+  paths:
+    - "/healthz"
+    - "/readyz"
+    - "/favicon.ico"
+    - "/robots.txt"
+  user_agents:
+    - '^kube-probe/'
+    - '^UptimeRobot/'
+    - '^StatusCake'
+
+# ---------------------------------------------------------------------------
+# Smart Alert Grouping / Deduplication
+# Consolidates repeated triggers of the same (rule_id, source_ip) within
+# cooldown_seconds into a single summary Finding with hit_count and samples.
+# ---------------------------------------------------------------------------
+deduplication:
+  enabled: true
+  cooldown_seconds: 300
+  max_samples: 3
+
+signatures:
+  # -------------------------------------------------------------------------
+  # Web Attack Signatures
+  # -------------------------------------------------------------------------
+  - id: WEB-001
+    name: SQL Injection Attempt
+    category: web_attack
+    severity: CRITICAL
+    formats: [nginx, generic]
+    url_decode: true
+    fields:
+      - endpoint_or_service
+      - message
+    patterns:
+      - '\bUNION\s+(?:ALL\s+)?SELECT\b'
+      - "(?:'|\\b)\\s*OR\\s+['\"]?\\d+['\"]?\\s*=\\s*['\"]?\\d+"
+      - "'\\s*OR\\s*'[^']*'\\s*=\\s*'"
+      - '\b(?:SLEEP|BENCHMARK|WAITFOR\s+DELAY)\s*\('
+      - ';\s*(?:DROP|DELETE|INSERT|UPDATE|ALTER)\s+(?:TABLE|DATABASE|FROM|INTO)\b'
+      - '\bINFORMATION_SCHEMA\b'
+    remediation_hint: "Block source IP at WAF/firewall, inspect database query logs, and enforce parameterized queries."
+
+  - id: WEB-002
+    name: Cross-Site Scripting (XSS) Attempt
+    category: web_attack
+    severity: HIGH
+    formats: [nginx, generic]
+    url_decode: true
+    fields:
+      - endpoint_or_service
+      - message
+    patterns:
+      - '<\s*script\b[^>]*>'
+      - 'javascript\s*:'
+      - '\bon(?:error|load|click|mouseover|focus|submit)\s*='
+      - '<\s*iframe\b[^>]*>'
+      - 'document\.(?:cookie|location|write)\b'
+    remediation_hint: "Block or rate-limit source IP at WAF, verify output encoding, and enforce a strict Content-Security-Policy (CSP)."
+
+  - id: WEB-003
+    name: Path Traversal / Local File Inclusion
+    category: web_attack
+    severity: HIGH
+    formats: [nginx, generic]
+    url_decode: true
+    fields:
+      - endpoint_or_service
+      - message
+    patterns:
+      - '(?:\.\./|\.\.\\){2,}'
+      - '/etc/(?:passwd|shadow|hosts|issue)\b'
+      - '\\windows\\win\.ini\b'
+      - '/proc/self/environ\b'
+      - 'php://(?:filter|input)\b'
+    remediation_hint: "Block source IP, audit web server path canonicalization, and ensure file access is restricted to an allowlisted directory."
+
+  - id: WEB-004
+    name: OS Command Injection Attempt
+    category: web_attack
+    severity: CRITICAL
+    formats: [nginx, generic]
+    url_decode: true
+    fields:
+      - endpoint_or_service
+      - message
+    patterns:
+      - '(?:;|\||&&|\$\(|`)\s*(?:cat|whoami|id|uname|ls|pwd|wget|curl|nc|ncat|bash|sh|python3?|perl|php)\b(?!\s*=)'
+      - '/bin/(?:ba)?sh\b'
+    remediation_hint: "Immediately block source IP, check host for unauthorized child processes or web shells, and remove shell invocation from app code."
+
+  - id: WEB-005
+    name: Suspicious Security Scanner User-Agent
+    category: scanner
+    severity: MEDIUM
+    formats: [nginx, generic]
+    url_decode: false
+    fields:
+      - message
+      - raw_line
+    patterns:
+      - '\b(?:sqlmap|nikto|gobuster|dirbuster|nmap|masscan|wpscan|acunetix|nessus|hydra|feroxbuster|ffuf|zgrab)\b'
+    remediation_hint: "Rate-limit or block scanner IP at edge WAF/firewall and review subsequent requests from the same host."
+
+  # -------------------------------------------------------------------------
+  # System & Authentication Signatures
+  # -------------------------------------------------------------------------
+  - id: AUTH-001
+    name: Root Login Attempt
+    category: auth_threat
+    severity: HIGH
+    url_decode: false
+    fields:
+      - message
+      - raw_line
+    patterns:
+      - 'Failed password for root\b'
+      - 'Accepted (?:password|publickey) for root\b'
+      - 'authentication failure.*user=root\b'
+      - '\bROOT LOGIN\b'
+    remediation_hint: "Disable direct root SSH login (PermitRootLogin no), block offending IP, and audit root session activity."
+
+  - id: AUTH-002
+    name: Sudo Privilege Escalation Failure
+    category: auth_threat
+    severity: HIGH
+    url_decode: false
+    fields:
+      - message
+      - raw_line
+    patterns:
+      - 'sudo(?:\[\d+\])?:.*(?:authentication failure|incorrect password attempts|user NOT in sudoers|command not allowed)'
+      - '\b(?:user NOT in sudoers|incorrect password attempts|command not allowed)\b'
+    remediation_hint: "Investigate the initiating local account for compromise, review /etc/sudoers, and rotate credentials if unauthorized."
+
+  - id: AUTH-003
+    name: Invalid User Enumeration
+    category: auth_threat
+    severity: MEDIUM
+    url_decode: false
+    fields:
+      - message
+    patterns:
+      - 'Invalid user \S+ from'
+      - 'Failed password for invalid user \S+'
+    remediation_hint: "Enforce SSH key-only authentication, deploy fail2ban or firewall rate-limiting, and restrict SSH access via AllowUsers/VPN."
+
+  - id: SYS-001
+    name: Critical Service Crash or Kernel Fault
+    category: system_health
+    severity: CRITICAL
+    url_decode: false
+    fields:
+      - message
+      - raw_line
+    patterns:
+      - '\b(?:segfault at|segmentation fault|kernel panic|Out of memory: Killed process|oom-killer|fatal error|core dumped|Main process exited, code=killed)\b'
+    remediation_hint: "Inspect crash dumps and systemd journals immediately; assess whether the crash was triggered by an exploit attempt or resource exhaustion."
+
+  - id: SYS-002
+    name: Account Lockout / Excessive Auth Failures
+    category: auth_threat
+    severity: MEDIUM
+    url_decode: false
+    fields:
+      - message
+    patterns:
+      - '\b(?:pam_tally2|pam_faillock|account locked|Maximum authentication attempts exceeded|Too many authentication failures)\b'
+    remediation_hint: "Review auth logs around the lockout window, verify whether legitimate users are impacted, and block offending source IPs."
+
+# ---------------------------------------------------------------------------
+# Stateful Sliding-Window Behavioral Rules
+# ---------------------------------------------------------------------------
+behavioral_rules:
+  - id: BEH-001
+    name: Brute-Force Authentication Burst
+    category: brute_force
+    severity: HIGH
+    # Alert when a single source_ip reaches >= threshold matching events within window_seconds
+    threshold: 5
+    window_seconds: 60
+    match:
+      status_codes: [401, 403]
+      message_patterns:
+        - 'Failed password'
+        - 'authentication failure'
+        - 'Failed publickey'
+        - 'Invalid user'
+    remediation_hint: "Block source IP at firewall/WAF, enforce MFA and account lockout policies, and audit target accounts for successful logins."
+
+  - id: BEH-002
+    name: Directory / Endpoint Enumeration Burst
+    category: enumeration
+    severity: MEDIUM
+    threshold: 8
+    window_seconds: 60
+    match:
+      status_codes: [404]
+    remediation_hint: "Throttle or block source IP at edge proxy/WAF and verify no sensitive admin panels or backup files are exposed."
+
+  - id: BEH-003
+    name: Traffic Spike / Potential DoS Indicator
+    category: dos_indicator
+    severity: HIGH
+    threshold: 30
+    window_seconds: 60
+    match:
+      match_all: true
+    remediation_hint: "Apply per-IP rate limiting at CDN/reverse proxy, inspect request payloads for L7 flood patterns, and block abusive IPs."

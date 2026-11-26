@@ -1,0 +1,29 @@
+Nov 25 09:58:02 prod-bastion-01 sshd[10211]: Accepted publickey for deploy from 10.0.2.10 port 51422 ssh2: ED25519 SHA256:9xK2mQpL8vN1rT4yW6zA0bC3dE5fG7hJ
+Nov 25 09:58:02 prod-bastion-01 systemd-logind[812]: New session 410 of user deploy.
+Nov 25 09:58:15 prod-bastion-01 sudo[10248]:   deploy : TTY=pts/0 ; PWD=/srv/app ; USER=root ; COMMAND=/usr/bin/systemctl status nginx
+Nov 25 09:58:15 prod-bastion-01 sudo[10248]: pam_unix(sudo:session): session opened for user root(uid=0) by deploy(uid=1001)
+Nov 25 09:58:16 prod-bastion-01 sudo[10248]: pam_unix(sudo:session): session closed for user root
+Nov 25 09:59:00 prod-bastion-01 CRON[10290]: pam_unix(cron:session): session opened for user root(uid=0) by (uid=0)
+Nov 25 09:59:01 prod-bastion-01 CRON[10290]: pam_unix(cron:session): session closed for user root
+Nov 25 10:01:04 prod-bastion-01 sshd[10401]: Invalid user admin from 203.0.113.200 port 49112
+Nov 25 10:01:06 prod-bastion-01 sshd[10401]: Failed password for invalid user admin from 203.0.113.200 port 49112 ssh2
+Nov 25 10:01:09 prod-bastion-01 sshd[10405]: Invalid user oracle from 203.0.113.200 port 49188
+Nov 25 10:01:11 prod-bastion-01 sshd[10405]: Failed password for invalid user oracle from 203.0.113.200 port 49188 ssh2
+Nov 25 10:01:14 prod-bastion-01 sshd[10410]: Invalid user postgres from 203.0.113.200 port 49241
+Nov 25 10:01:16 prod-bastion-01 sshd[10410]: Failed password for invalid user postgres from 203.0.113.200 port 49241 ssh2
+Nov 25 10:01:19 prod-bastion-01 sshd[10415]: Invalid user ubuntu from 203.0.113.200 port 49302
+Nov 25 10:01:21 prod-bastion-01 sshd[10415]: Failed password for invalid user ubuntu from 203.0.113.200 port 49302 ssh2
+Nov 25 10:02:10 prod-bastion-01 sshd[10502]: Failed password for root from 198.51.100.14 port 60101 ssh2
+Nov 25 10:02:13 prod-bastion-01 sshd[10502]: Failed password for root from 198.51.100.14 port 60101 ssh2
+Nov 25 10:02:16 prod-bastion-01 sshd[10502]: Failed password for root from 198.51.100.14 port 60101 ssh2
+Nov 25 10:02:19 prod-bastion-01 sshd[10502]: Failed password for root from 198.51.100.14 port 60101 ssh2
+Nov 25 10:02:22 prod-bastion-01 sshd[10502]: Failed password for root from 198.51.100.14 port 60101 ssh2
+Nov 25 10:02:25 prod-bastion-01 sshd[10502]: Failed password for root from 198.51.100.14 port 60101 ssh2
+Nov 25 10:02:25 prod-bastion-01 sshd[10502]: error: maximum authentication attempts exceeded for root from 198.51.100.14 port 60101 ssh2 [preauth]
+Nov 25 10:02:25 prod-bastion-01 sshd[10502]: Disconnecting authenticating user root 198.51.100.14 port 60101: Too many authentication failures [preauth]
+Nov 25 10:03:05 prod-bastion-01 sshd[10601]: Accepted publickey for ops from 10.0.2.15 port 55102 ssh2: ED25519 SHA256:4mP8qR1sT7uV2wX9yZ3aB6cD0eF5gH8i
+Nov 25 10:03:42 prod-bastion-01 sudo[10644]:   intern : user NOT in sudoers ; TTY=pts/2 ; PWD=/home/intern ; USER=root ; COMMAND=/usr/sbin/usermod -aG sudo intern
+Nov 25 10:04:11 prod-bastion-01 sudo[10680]:      bob : 3 incorrect password attempts ; TTY=pts/3 ; PWD=/home/bob ; USER=root ; COMMAND=/usr/bin/apt upgrade
+Nov 25 10:05:18 prod-bastion-01 kernel: [84215.102344] nginx[4812]: segfault at 0000000000000018 ip 00007f9a1c2d3e4f sp 00007ffc2a1b4c00 error 4 in libc.so.6
+Nov 25 10:05:19 prod-bastion-01 systemd[1]: nginx.service: Main process exited, code=killed, status=11/SEGV
+Nov 25 10:06:00 prod-bastion-01 sshd[10710]: Disconnected from user deploy 10.0.2.10 port 51422
